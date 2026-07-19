@@ -6,12 +6,12 @@ dotenv.config();
 import healthRouter from "./routes/health.js";
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
 app.use(express.json());
 app.use('/api', healthRouter);
 
 
-app.listen(PORT, ()=> {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server is running on port ${PORT}`);
-})
+});
