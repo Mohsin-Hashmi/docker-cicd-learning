@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    image: mohsin1920/docker-cicd-learning:latest
+    image: ${DOCKER_IMAGE:-mohsin1920/docker-cicd-learning}:${IMAGE_TAG:-latest}
 
     container_name: docker-cicd-learning
 

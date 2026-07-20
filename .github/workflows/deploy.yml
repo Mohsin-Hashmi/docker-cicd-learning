@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/docker-cicd-learning
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
       - name: Checkout Repository
@@ -22,23 +25,45 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           docker build \
-            -t ${{secrets.DOCKER_USERNAME}}/docker-cicd-learning:latest \
-            -t ${{secrets.DOCKER_USERNAME}}/docker-cicd-learning:${{ github.sha }} .
+            --build-arg APP_VERSION=${IMAGE_TAG} \
+            -t ${IMAGE_NAME}:latest \
+            -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
-          docker push ${{secrets.DOCKER_USERNAME}}/docker-cicd-learning:latest
-          docker push ${{secrets.DOCKER_USERNAME}}/docker-cicd-learning:${{ github.sha }}
+          docker push ${IMAGE_NAME}:latest
+          docker push ${IMAGE_NAME}:${IMAGE_TAG}
 
       - name: Deploy to Oracle Cloud
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_IMAGE: ${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DOCKER_USERNAME,DOCKER_PASSWORD,DOCKER_IMAGE,IMAGE_TAG
           script: |
+            set -e
             cd /docker-cicd-learning
 
-            docker compose pull
+            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-            docker compose up -d --force-recreate
+            cat > docker-compose.deploy.yml <<EOF
+            services:
+              api:
+                image: ${DOCKER_IMAGE}:${IMAGE_TAG}
+                container_name: docker-cicd-learning
+                restart: unless-stopped
+                ports:
+                  - "8000:8000"
+                env_file:
+                  - .env
+            EOF
+
+            docker compose -f docker-compose.deploy.yml pull api
+
+            docker compose -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans api
 
             docker image prune -af
