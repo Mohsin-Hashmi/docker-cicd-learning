@@ -57,7 +57,6 @@ jobs:
             docker run -d \
               --name docker-cicd-learning \
               --restart unless-stopped \
-              --env-file .env \
               -p 8000:8000 \
               "${DOCKER_IMAGE}:${IMAGE_TAG}"
 
