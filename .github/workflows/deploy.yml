@@ -50,20 +50,15 @@ jobs:
 
             echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-            cat > docker-compose.deploy.yml <<EOF
-            services:
-              api:
-                image: ${DOCKER_IMAGE}:${IMAGE_TAG}
-                container_name: docker-cicd-learning
-                restart: unless-stopped
-                ports:
-                  - "8000:8000"
-                env_file:
-                  - .env
-            EOF
+            docker pull "${DOCKER_IMAGE}:${IMAGE_TAG}"
 
-            docker compose -f docker-compose.deploy.yml pull api
+            docker rm -f docker-cicd-learning || true
 
-            docker compose -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans api
+            docker run -d \
+              --name docker-cicd-learning \
+              --restart unless-stopped \
+              --env-file .env \
+              -p 8000:8000 \
+              "${DOCKER_IMAGE}:${IMAGE_TAG}"
 
             docker image prune -af
